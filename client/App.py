@@ -12,10 +12,8 @@ from client import (
     PacketManager,
     timestamp,
     Client,
-    Log,
+    log,
 )
-
-log = Log()
 
 class Form(Tk):
     def __init__(self, address: tuple[str, int], *args, **kwargs) -> None:
@@ -69,8 +67,16 @@ class Form(Tk):
         try:
             self.listener.start()
             self.mainloop()
+            raise KeyboardInterrupt
+        except KeyboardInterrupt:
+            log(log.LogType.INFO, "User closed program!")
+            del self.listener
+            self.client.disconnect()
+            exit(0)
         except Exception as error:
             log(log.LogType.ERROR, error)
+            del self.listener
+            exit(1)
 
 class Input(Entry):
     def __init__(self, parent, **kwargs):

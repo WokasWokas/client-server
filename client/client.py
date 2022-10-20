@@ -11,15 +11,15 @@ class Log:
     class LogType:
         @property
         def INFO():
-            return 'info'
-        
+            return '\033[36minfo\033[0m'
+
         @property
         def WARN():
-            return 'warn'
-        
+            return '\033[33mwarn\033[0m'
+
         @property
         def ERROR():
-            return 'errn'
+            return '\033[31merrn\033[0m'
 
     def __call__(self, type: LogType, message: str, time: float = 0.0) -> None:
         print(f"{timestamp()}: {time} ms : [{type.fget()}] : {message}")
@@ -92,7 +92,11 @@ class Client:
             self.socket.sendall(PacketManager.keys_packet(self.rsa))
             return True
         except Exception as error:
-            Log(Log.LogType.ERROR, error)
+            log(log.LogType.ERROR, error)
+
+    @log.LogDecorator
+    def disconnect(self) -> None:
+        self.socket.close()
 
     @log.LogDecorator
     def send(self, message: str) -> bool:

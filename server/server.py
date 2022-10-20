@@ -1,12 +1,10 @@
 from time import monotonic, strftime, gmtime, time
-from crypter import RSA, code
-from random import randbytes
+from crypter import RSA, code, randbytes
 from threading import Thread
 from time import monotonic
 from os import system
 
-import sqlite3, socket
-import asyncio
+import asyncio, socket
 
 timestamp = lambda: strftime("%d.%m.%y %H:%M:%S", gmtime(time()))
 calculate_time = lambda x: round((monotonic() - x) * 1000, 2)
@@ -16,18 +14,18 @@ class Log:
     class LogType:
         @property
         def INFO():
-            return 'info'
-        
+            return '\033[36minfo\033[0m'
+
         @property
         def WARN():
-            return 'warn'
-        
+            return '\033[33mwarn\033[0m'
+
         @property
         def ERROR():
-            return 'errn'
+            return '\033[31merrn\033[0m'
 
     def __call__(self, type: LogType, message: str, time: float = 0.0) -> None:
-        print(f"{timestamp()}: {time} ms : [{type.fget()}] : {message}")
+        print(f"{timestamp()} : {time} ms : [{type.fget()}] : {message}")
 
     def LogDecorator(self, func) -> None:
         def wrapper(*args, **kwargs) -> None:
@@ -55,53 +53,28 @@ class User:
     @property
     def address(self) -> any:
         return self._address
-    
+
     @property
     def connection(self) -> socket.socket:
         return self._connection
-    
+
     @property
     def name(self) -> str:
         return self._name
-    
+
     @property
     def listen(self) -> Thread:
         return self._listenthread
-    
+
     @property
     def pubkey(self) -> tuple[int, int]:
         return self._pubkey
-
-class Database:
-    def __init__(self, database: str) -> None:
-        try:
-            self._connection = sqlite3.connect(database)
-            self._cursor = self._connection.cursor()
-        except Exception as error:
-            print(f"Database '__init__' error: {error}")
-    
-    def __database_check__(self) -> bool:
-        print(self._cursor.rowcount)
-    
-    def create_table(self, name: str, values: str) -> None:
-        try:
-            self._cursor.execute(f"CREATE TABLE {name}({values});")
-            self._connection.commit()
-        except Exception as error:
-            print(f"Database 'create_table' error: {error}")
-
-    def insert(self, table: str, data: str) -> None:
-        try:
-            self._cursor.execute(f"INSERT INTO {table} ({data})")
-            self._connection.commit()
-        except Exception as error:
-            print(f"Database 'insert' error: {error}")
 
 class PacketManager:
     @log.LogDecorator
     async def keys_packet(rsa: RSA) -> bytes:
         data: bytes = (
-            rsa._data['pubkey'][0].to_bytes(32, "big") + 
+            rsa._data['pubkey'][0].to_bytes(32, "big") +
             rsa._data['pubkey'][1].to_bytes(32, "big")
             )
         zerosize = 1022 - data.__len__()
@@ -119,7 +92,7 @@ class PacketManager:
         payload = rsa.encode(code(message), rsa._data['_pubkey'])
         zerosiez = 1022 - payload.__len__()
         return zerosiez.to_bytes(2, "big") + payload + randbytes(zerosiez)
-    
+
     async def decode_packet(message: str, rsa: RSA) -> bytes:
         zerosize = 1024 - int.from_bytes(message[:2], "big")
         return code(rsa.decode(message[2:zerosize], rsa._data['privkey']))
@@ -151,16 +124,20 @@ class Server:
         self._threads['accepter'].start()
         log(log.LogType.INFO, "Inited and started!")
 
-        clear = lambda: system('cls')
         try:
             log(log.LogType.INFO, "Server started!")
             while True:
                 continue
+        except KeyboardInterrupt:
+            asyncio.run(self.sendall("Admin closing  server!"))
+            log(log.LogType.INFO, "Admin closed server!")
+            self._threads.clear()
+            self._users.clear()
+            exit(0)
         except Exception as error:
             log(log.LogType.ERROR, error)
             log(log.LogType.INFO, "Closing server!")
-            del self._threads
-            exit(0)
+            exit(1)
 
     @log.LogDecorator
     async def accept(self) -> tuple[socket.socket, any]:
